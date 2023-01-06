@@ -1,11 +1,17 @@
 from scrapy import Request
 from scrapy.linkextractors import LinkExtractor
-from scrapy.spiders import Rule, CrawlSpider
-from tldextract import extract
-from urllib.parse import urlparse, parse_qs
+from scrapy.spiders import Rule, CrawlSpider, Spider
+from urllib.parse import urlparse, parse_qs, urlencode
 from amazonchecker.items import AmazonProductItem 
 import re
-import json
+# from dotenv import dotenv_values
+API = ""
+# use Scrapper API for requests
+def get_url(url):
+    payload = {'api_key': API, 'url': url, 'country_code': 'us'}
+    proxy_url = 'http://api.scraperapi.com/?' + urlencode(payload)
+    return proxy_url
+
 
 class AmazonLinkCollector(CrawlSpider):
     name = 'amazon_spider'
@@ -22,20 +28,30 @@ class AmazonLinkCollector(CrawlSpider):
     # rules = [  
         
     # ]\
+
+    amazonExtractor = LinkExtractor(allow_domains=["merch.amazon", "amazon"], deny_domains=["kdp.amazon.com", "aws.amazon.com"], restrict_text=['review', "register", "signin", "/customer-preferences/", "forgot-password"])
+
     asin_patten = re.compile('.*\/([a-zA-Z0-9]{10})(?:[/?]|$).*')
-    start_urls = ["https://streammentor.com/"]
-    allowed_domains = ["streammentor.com", "amazon.com", "merch.amazon.com"]
+    start_urls = ["https://streammentor.com/streaming-equipment/#headphones"]
+    allowed_domains = ["amazon.com", "merch.amazon.com", "streammentor.com"]
+    
     rules = [  # Get all links on start url
         Rule(
             link_extractor=LinkExtractor(
                 allow_domains='streammentor.com'
             ),
             follow=True,
-            callback='parse',
+            callback="parse_regular"
         ),
-        Rule(link_extractor=LinkExtractor(allow_domains='amazon.com'), callback='parse_amazon', follow=True),
+        Rule(
+            link_extractor=amazonExtractor,
+            follow=True,
+            callback="parse_amazon"
+        ),
     ]
-
+    
+    def is_amazon_product_page(self, url):
+        return "amazon" in url and not "review" in url and self.asin_patten.search(url) and 'tag' in parse_qs(urlparse(url).query)
 
     
     # def __init__(self, url=None, *args, **kwargs):
@@ -75,73 +91,78 @@ class AmazonLinkCollector(CrawlSpider):
         #     )
         # ]
 
+    def parse_regular(self, response):
+        self.logger.info('Parse function called on %s', response.url)
 
 
+        if response.status in (301, 302):
+            self.logger.info('\n\n\nRedirect is HAPPENING %s\n\n\n', response)
 
-    # def start_requests(self):
-    #     yield Request(self.start_urls[0])
-    # def parse_start_url(self, response):
-    #     if response.status in (404,400,500):
-    #         item = AmazonProductItem()
-    #         item['referer'] = response.request.headers.get('Referer', None)
-    #         item['status'] = response.status
-    #         item['response']= response.url
-    #         yield item
-    #     if response.status in (301, 302) and 'amazon.com' in response.headers['Location']:
-    #         return self.parse_amazon(response)
-    #     pass
-
-    def parse(self, request):
-        self.logger.info('Parse function called on %s', request.url)
-        # Check if the link is broken
-        if request.status >= 400:
-            item = AmazonProductItem()
-            item['referer'] = request.headers.get('Referer', None)
-            item['status'] = request.status
-            item['response']= request.url
-            yield item
-
+        redirect_statuses = (301, 302, 303, 307, 308)
         
-        # Check if the link redirects to Amazon.com
-        if ("amazon.com" in request.url and "review" not in request.url) or (request.status in (301, 302) and 'amazon.com' in request.headers['Location']):
-            self.logger.warning('AMAZON LINK %s\n\n', request.url)
-            return self.parse_amazon(request)
-        
-        for link in LinkExtractor(allow_domains=["merch.amazon.com", "amazon.com"], deny=r'^.*review.*$').extract_links(request):
-            self.logger.warning('(1) Link extracted %s', link)
-            yield Request(link.url, callback=self.parse_amazon)
 
-        for link in LinkExtractor(allow_domains=self.allowed_domains[-1]).extract_links(request):
-            self.logger.warning('(2) Link extracted %s', link)
-            yield Request(link.url, callback=self.parse_page)
-    
-    
-    # def parse_page(self, response):
-    #     if response.status >= 400:
-    #         item = AmazonProductItem()
-    #         item['referer'] = response.request.headers.get('Referer', None)
-    #         item['status'] = response.status
-    #         item['response']= response.url
-    #         yield item
-    #     if response.status in (301, 302) and 'amazon.com' in response.headers['Location']:
-    #         return self.parse_amazon(response)
+        redirect_urls = response.request.meta.get('redirect_urls', None)
 
-    def parse_amazon(self, response):
+
+        # Hanlde Cloaked Amazon Links
+        if (response.status in redirect_statuses or 'Location' in response.headers) and redirect_urls is not None: # <== this is condition of redirection
+            self.logger.info(f"\n\n\nWe're about to REDIRECT, current url--\n\n\n", response.url)
+            first_amazon_link = next((u for u in redirect_urls if self.is_amazon_product_page(u)), None)
+            if first_amazon_link is not None:
+                # Got Amazon 
+                self.logger.info("\n\n\nFound AMAZON in redirects, following...\n\n\n")
+                yield Request(url=first_amazon_link, callback=self.parse_amazon)
+                
+
         # Check if the link is broken
-        if response.status in (404,400,500):
+        if response.status in range(400, 600):
+            self.logger.error(f"\n\nFAILING status code in regular link\n\n")
             item = AmazonProductItem()
             item['referer'] = response.request.headers.get('Referer', None)
             item['status'] = response.status
             item['response']= response.url
             yield item
 
+        
+        # Check if the link redirects to Amazon.com
+        if self.is_amazon_product_page(response.url):
+            self.logger.warning('AMAZON LINK %s\n\n', response.url)
+            yield self.parse_amazon(response)
+        
+        # Extract Amazon Links and Process
+        # for link in self.amazonExtractor.extract_links(response):
+        #     self.logger.warning('(1) New Amazon Link extracted %s', link)
+        #     yield Request(url=get_url(link.url), callback=self.parse_amazon)
+        #     # yield Request(link.url, callback=self.parse_amazon)
 
-        item = AmazonProductItem() 
+        # for link in LinkExtractor(allow_domains=self.allowed_domains[-1]).extract_links(response):
+        #     # self.logger.warning('(2) Regular Link extracted %s', link)
+        #     yield Request(url=link.url, callback=self.parse)
+
+
+    def parse_amazon(self, response):
+        self.logger.warning(f"\n\nParsing amazon link {response.url}\n\n")
+
+        # Check if the link is broken
+        item = AmazonProductItem()
+        item['referer'] = response.request.headers.get('Referer', None)
+        item['status'] = response.status
+        item['response']= response.url
+        
+        if response.status in range(400, 600):
+            self.logger.info(f"\n\nFAILING status cde in Amazon Link\n\n")
+            yield item
 
         # Extract the tag query parameter from the URL
         q_params = parse_qs(urlparse(response.url).query)
         item["tag"] = q_params['tag'][0] if 'tag' in q_params and len(q_params['tag']) > 0 else ''
         
+        if not item["tag"] and item['referer']:
+            q_params = parse_qs(urlparse(item['referer']).query)
+            item["tag"] = q_params['tag'][0] if 'tag' in q_params and len(q_params['tag']) > 0 else ''
+
+            
+
         # Extaract ASIN 
         item["asin"] =  '' 
         if 'asin' in response.meta:
@@ -158,8 +179,8 @@ class AmazonLinkCollector(CrawlSpider):
             item["image"] = ''
         item["rating"] = response.xpath('//*[@id="acrPopover"]/@title').extract_first()
         item["number_of_reviews"] = response.xpath('//*[@id="acrCustomerReviewText"]/text()').extract_first()
+        
         item["price"] = response.xpath('//*[@id="priceblock_ourprice"]/text()').extract_first()
-
         if not item["price"]:
             item["price"] = response.xpath('//*[@data-asin-price]/@data-asin-price').extract_first() or \
                     response.xpath('//*[@id="price_inside_buybox"]/text()').extract_first()
