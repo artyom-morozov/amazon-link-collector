@@ -17,12 +17,11 @@ class AmazonProductItem(Item):
     price = Field()
     bullet_points = Field()
     seller_rank = Field()
-
-
-# class FailedLinkItem(Item):
-#     referer =Field() # where the link is extracted
-#     response= Field() # url that was requested
-#     status = Field() # status code received
+    available = Field()
+class FailedLinkItem(Item):
+    referer =Field() # where the link is extracted
+    response= Field() # url that was requested
+    status = Field() # status code received
 
 # class AmazonProductItem(scrapy.Item):
 #     # define the fields for your item here like:

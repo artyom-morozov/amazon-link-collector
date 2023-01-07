@@ -8,6 +8,26 @@
 from itemadapter import ItemAdapter
 
 
-class AmazoncheckerPipeline:
+class AmazonCheckerPipeline:
+
     def process_item(self, item, spider):
+        for k, v in item.items():
+            if not v or v == '':
+                item[k] = ''  # replace empty list or None with empty string
+                continue
+
+            if k == 'tag':
+                item[k] = v.strip()
+            elif k == 'referer' and not isinstance(v, str):
+                item[k] = v.decode('utf-8')
+            elif k == 'title':
+                item[k] = v.strip()
+            elif k == 'rating':
+                item[k] = v.replace(' out of 5 stars', '')
+            elif k == 'AvailableSizes' or k == 'AvailableColors':
+                item[k] = ", ".join(v)
+            elif k == 'bullet_points':
+                item[k] = ", ".join([i.strip() for i in v if i.strip()])
+            elif k == 'seller_rank':
+                item[k] = " ".join([i.strip() for i in v if i.strip()])
         return item
