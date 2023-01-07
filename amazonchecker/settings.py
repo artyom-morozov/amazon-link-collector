@@ -21,7 +21,8 @@ NEWSPIDER_MODULE = 'amazonchecker.spiders'
 ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-# CONCURRENT_REQUESTS = 5
+CONCURRENT_REQUESTS = 5
+RETRY_TIMES = 5
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -57,10 +58,10 @@ ROBOTSTXT_OBEY = False
 
 
 # Switch User Agent Middleware
-DOWNLOADER_MIDDLEWARES = {
-    'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-    'scrapy_user_agents.middlewares.RandomUserAgentMiddleware': 400,
-}
+# DOWNLOADER_MIDDLEWARES = {
+#     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+#     'scrapy_user_agents.middlewares.RandomUserAgentMiddleware': 400,
+# }
 
 # Scrape Ops
 # DOWNLOADER_MIDDLEWARES = { 
@@ -77,9 +78,9 @@ DOWNLOADER_MIDDLEWARES = {
 
 
 # Add In The ScrapeOps Extension
-# EXTENSIONS = {
-#  'scrapeops_scrapy.extension.ScrapeOpsMonitor': 500, 
-# }
+EXTENSIONS = {
+ 'scrapeops_scrapy.extension.ScrapeOpsMonitor': 500, 
+}
 
 
 # Configure item pipelines
@@ -90,11 +91,11 @@ DOWNLOADER_MIDDLEWARES = {
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
-AUTOTHROTTLE_ENABLED = True
+# AUTOTHROTTLE_ENABLED = True
 # The initial download delay
-AUTOTHROTTLE_START_DELAY = 0.5
+# AUTOTHROTTLE_START_DELAY = 0.5
 # The maximum download delay to be set in case of high latencies
-AUTOTHROTTLE_MAX_DELAY = 60
+# AUTOTHROTTLE_MAX_DELAY = 60
 # The average number of requests Scrapy should be sending in parallel to
 # each remote server
 #AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0
@@ -113,4 +114,5 @@ AUTOTHROTTLE_MAX_DELAY = 60
 REQUEST_FINGERPRINTER_IMPLEMENTATION = '2.7'
 TWISTED_REACTOR = 'twisted.internet.asyncioreactor.AsyncioSelectorReactor'
 
-SCRAPEOPS_API_KEY = ""
+SCRAPEOPS_API_KEY = "9191ce68-e008-48e4-913e-6d5b4a84cd25"
+SCRAPPER_API = "784c19334f48fcd873bad4d4348e7a1d"

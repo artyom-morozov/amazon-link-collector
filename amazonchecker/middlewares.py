@@ -9,6 +9,34 @@ from scrapy import signals
 from itemadapter import is_item, ItemAdapter
 
 
+import re
+from urllib.parse import parse_qs, urlencode, urlparse
+
+from scrapy import Request
+from scrapy.downloadermiddlewares.httpproxy import HttpProxyMiddleware
+
+
+class AmazonProductMiddleware(HttpProxyMiddleware):
+    asin_pattern = re.compile('.*\/([a-zA-Z0-9]{10})(?:[/?]|$).*')
+
+    def is_amazon_product_page(self, url):
+        return "amazon" in url and not "review" in url and self.asin_pattern.search(url) and 'tag' in parse_qs(urlparse(url).query)
+
+    def get_url(self, url):
+        if not self.settings.get("SCRAPPER_API", ""):
+            self.logger.info('Scrapper API key is not defined, processing amazon link without proxy %s', url)
+            return url
+        payload = {'api_key': self.settings.get("SCRAPPER_API"), 'url': url, 'country_code': 'us'}
+        proxy_url = 'http://api.scraperapi.com/?' + urlencode(payload)
+        return proxy_url
+
+    def process_request(self, request, spider):
+        if self.is_amazon_product_page(request.url):
+            request = Request(self.get_url(request.url), dont_filter=True)
+        return super().process_request(request, spider)
+
+
+
 class AmazoncheckerSpiderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the spider middleware does not modify the
