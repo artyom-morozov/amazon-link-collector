@@ -23,7 +23,7 @@ test-output.*
 .env.local
 .env
 log.txt 
-links.json
+*.json
 # Windows
 Thumbs.db
 

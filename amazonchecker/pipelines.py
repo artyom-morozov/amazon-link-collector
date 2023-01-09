@@ -16,7 +16,7 @@ class AmazonCheckerPipeline:
                 item[k] = ''  # replace empty list or None with empty string
                 continue
 
-            if k == 'tag':
+            if k == 'tag' or k == 'available':
                 item[k] = v.strip()
             elif k == 'referer' and not isinstance(v, str):
                 item[k] = v.decode('utf-8')

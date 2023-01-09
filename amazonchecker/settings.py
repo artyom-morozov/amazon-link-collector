@@ -64,10 +64,15 @@ RETRY_TIMES = 5
 # }
 
 # Scrape Ops
-# DOWNLOADER_MIDDLEWARES = { 
-#     'scrapeops_scrapy.middleware.retry.RetryMiddleware': 550, 
-#     'scrapy.downloadermiddlewares.retry.RetryMiddleware': None, 
-# }
+DOWNLOADER_MIDDLEWARES = { 
+    # 'amazonchecker.middlewares.AmazonProductMiddleware': 750,
+    # 'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': None,
+    'amazonchecker.middlewares.AmazonRedirectMiddleware': 600,
+    # 'amazonchecker.middlewares.AmazonCollectorRedirectMiddleware': 600,
+    'scrapy.downloadermiddlewares.redirect.RedirectMiddleware': None,
+    # 'scrapeops_scrapy.middleware.retry.RetryMiddleware': 550, 
+    # 'scrapy.downloadermiddlewares.retry.RetryMiddleware': None, 
+}
 
 
 # Enable or disable extensions
@@ -76,18 +81,24 @@ RETRY_TIMES = 5
 #    'scrapy.extensions.telnet.TelnetConsole': None,
 #}
 
-
-# Add In The ScrapeOps Extension
-EXTENSIONS = {
- 'scrapeops_scrapy.extension.ScrapeOpsMonitor': 500, 
+FEED = {
+    'items.json': {
+        'format': 'json',
+        'encoding': 'utf8',
+        'indent': 4,
+    },
 }
+# Add In The ScrapeOps Extension
+# EXTENSIONS = {
+#  'scrapeops_scrapy.extension.ScrapeOpsMonitor': 500, 
+# }
 
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'amazonchecker.pipelines.AmazoncheckerPipeline': 300,
-#}
+ITEM_PIPELINES = {
+   'amazonchecker.pipelines.AmazonCheckerPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
@@ -114,5 +125,5 @@ EXTENSIONS = {
 REQUEST_FINGERPRINTER_IMPLEMENTATION = '2.7'
 TWISTED_REACTOR = 'twisted.internet.asyncioreactor.AsyncioSelectorReactor'
 
-SCRAPEOPS_API_KEY = "9191ce68-e008-48e4-913e-6d5b4a84cd25"
-SCRAPPER_API = "784c19334f48fcd873bad4d4348e7a1d"
+SCRAPEOPS_API_KEY = ""
+SCRAPPER_API = ""
