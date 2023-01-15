@@ -98,7 +98,7 @@ ITEM_PIPELINES = {
 # REQUEST_FINGERPRINTER_IMPLEMENTATION = '2.7'
 # TWISTED_REACTOR = 'twisted.internet.asyncioreactor.AsyncioSelectorReactor'
 
-LOG_FILE="scrapy-spider-%(id)s.log"
+LOG_FILE="scrapy.log"
 LOG_FILE_APPEND=False
 LOG_ENABLED=True
 LOG_LEVEL="DEBUG"
@@ -113,6 +113,11 @@ AWS_S3_SECRET_ACCESS_KEY = environ.get("AWS_S3_SECRET_ACCESS_KEY", "")
 # Store Items 
 FEEDS = {
     's3://amzlinkcheck-crawler-data/scraping/feeds/%(name)s/%(start_url)s/%(id)s_%(time)s.json': {
+        'format': 'json',
+        'encoding': 'utf8',
+        'indent': 4,
+    },
+    'items.json': {
         'format': 'json',
         'encoding': 'utf8',
         'indent': 4,

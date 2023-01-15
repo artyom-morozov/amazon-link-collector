@@ -30,15 +30,15 @@ class AmazonLinkCollector(Spider):
         self.id = spider_id
         self.start_urls = [start_url] if start_url is not None else []
         parts = urlparse(start_url)
-        self.allowed_domains = ["api.scraperapi.com", "amazon.com", "merch.amazon.com", parts.netloc]
+        self.allowed_domains = ["amazon.com", "amazon.to", "amzn.to", "amzn", "amzn.com", "api.scraperapi.com", "amazon.com", "merch.amazon.com", parts.netloc]
         self.asin_patten = re.compile('.*\/([a-zA-Z0-9]{10})(?:[/?]|$).*')
         self.amazon_extractor = LinkExtractor(deny=(r'review', r'openid', r"register", r"signin", r"\/customer-preferences\/", r"forgot-password", r"\/your-account", r"prime", r"\/gp\/help\/customer\/"),allow_domains=["amazon.com", "amazon.to", "amzn.to", "amzn", "amzn.com"], deny_domains=["merch.amazon.com", "affiliate-program.amazon.com","kdp.amazon.com", "aws.amazon.com"])
         self.regular_extractor = LinkExtractor(deny=(r'\/wp-admin\/'), allow_domains=[parts.netloc], deny_extensions=("webp", "jpg", "png", "gif") )       
-        self.logger.info(f"Amazon Spider with id {self.id} created for url {start_url} with allowed domain {parts.netloc}")
+        self.logger.info(f"Amazon Spider with id {self.id} created for url {start_url} with allowed domain {self.allowed_domains[-1]}")
 
     # check if link belongs to the same domain
     def is_site_link(self, url):
-        return self.start_urls[-1] in url
+        return self.allowed_domains[-1] in url
 
     # Check if link is correctly cloaked
     def is_icorrectly_cloaked(self, response):
@@ -106,6 +106,7 @@ class AmazonLinkCollector(Spider):
                 # yield Request(url=self.get_url(lnk.url), callback=self.parse_amazon)
                 yield response.follow(lnk.url, callback=self.parse)
         else:
+            self.logger.warning(f'Url {response.url} is not site link. Skipping...\n\n')
             return
         
     def parse_amazon(self, response):
