@@ -33,6 +33,14 @@ config = dotenv_values('.env')  # take environment variables from .env.
 crochet.setup()  # setting up crochet to execute
 
 scrapy_settings = get_project_settings()
+scrapy_settings.update({
+    'COOKIES_ENABLED' : False,
+    "LOG_ENABLED": True,
+    "LOG_STDOUT" : False,
+    "LOG_FILE_APPEND": True,
+    "SCRAPPER_API": config["SCRAPER_API_KEY"]
+})
+
 # init the logger using setting
 configure_logging(scrapy_settings)
 
