@@ -1,3 +1,7 @@
+from os import environ
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env.
 # Scrapy settings for amazonchecker project
 #
 # For simplicity, this file contains only settings considered important or
@@ -46,32 +50,14 @@ RETRY_TIMES = 5
 
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
-#SPIDER_MIDDLEWARES = {
-#    'amazonchecker.middlewares.AmazoncheckerSpiderMiddleware': 543,
-#}
-
-# Enable or disable downloader middlewares
-# See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    'amazonchecker.middlewares.AmazoncheckerDownloaderMiddleware': 543,
-#}
-
-
-# Switch User Agent Middleware
-# DOWNLOADER_MIDDLEWARES = {
-#     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-#     'scrapy_user_agents.middlewares.RandomUserAgentMiddleware': 400,
-# }
+SPIDER_MIDDLEWARES = {
+   'amazonchecker.middlewares.AmazoncheckerSpiderMiddleware': 543,
+}
 
 # Scrape Ops
 DOWNLOADER_MIDDLEWARES = { 
-    # 'amazonchecker.middlewares.AmazonProductMiddleware': 750,
-    # 'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': None,
     'amazonchecker.middlewares.AmazonRedirectMiddleware': 600,
-    # 'amazonchecker.middlewares.AmazonCollectorRedirectMiddleware': 600,
     'scrapy.downloadermiddlewares.redirect.RedirectMiddleware': None,
-    # 'scrapeops_scrapy.middleware.retry.RetryMiddleware': 550, 
-    # 'scrapy.downloadermiddlewares.retry.RetryMiddleware': None, 
 }
 
 
@@ -80,19 +66,6 @@ DOWNLOADER_MIDDLEWARES = {
 #EXTENSIONS = {
 #    'scrapy.extensions.telnet.TelnetConsole': None,
 #}
-
-FEED = {
-    'items.json': {
-        'format': 'json',
-        'encoding': 'utf8',
-        'indent': 4,
-    },
-}
-# Add In The ScrapeOps Extension
-# EXTENSIONS = {
-#  'scrapeops_scrapy.extension.ScrapeOpsMonitor': 500, 
-# }
-
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
@@ -122,8 +95,26 @@ ITEM_PIPELINES = {
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 # Set settings whose default value is deprecated to a future-proof value
-REQUEST_FINGERPRINTER_IMPLEMENTATION = '2.7'
-TWISTED_REACTOR = 'twisted.internet.asyncioreactor.AsyncioSelectorReactor'
+# REQUEST_FINGERPRINTER_IMPLEMENTATION = '2.7'
+# TWISTED_REACTOR = 'twisted.internet.asyncioreactor.AsyncioSelectorReactor'
 
-SCRAPEOPS_API_KEY = ""
-SCRAPPER_API = ""
+LOG_FILE="scrapy-spider-%(id)s.log"
+LOG_FILE_APPEND=False
+LOG_ENABLED=True
+LOG_LEVEL="DEBUG"
+LOG_STDOUT = True
+
+# Credentials
+SCRAPPER_API = environ.get("SCRAPER_API_KEY", "")
+AWS_S3_ACCESS_KEY_ID = environ.get("AWS_S3_ACCESS_KEY_ID", "")
+AWS_S3_SECRET_ACCESS_KEY = environ.get("AWS_S3_SECRET_ACCESS_KEY", "")
+
+
+# Store Items 
+FEEDS = {
+    's3://amzlinkcheck-crawler-data/scraping/feeds/%(name)s/%(start_url)s/%(id)s_%(time)s.json': {
+        'format': 'json',
+        'encoding': 'utf8',
+        'indent': 4,
+    },
+}

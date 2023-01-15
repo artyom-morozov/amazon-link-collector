@@ -7,7 +7,6 @@
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
 
-
 class AmazonCheckerPipeline:
 
     def process_item(self, item, spider):
@@ -15,7 +14,6 @@ class AmazonCheckerPipeline:
             if not v or v == '':
                 item[k] = ''  # replace empty list or None with empty string
                 continue
-
             if k == 'tag' or k == 'available':
                 item[k] = v.strip()
             elif k == 'referer' and not isinstance(v, str):
