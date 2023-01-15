@@ -22,8 +22,9 @@ test-output.*
 /tests/keys/localhost.key
 .env.local
 .env
-log.txt 
-*.json
+log.txt
+*.log
+items.json
 # Windows
 Thumbs.db
 
