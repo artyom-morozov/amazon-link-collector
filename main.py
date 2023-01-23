@@ -109,10 +109,10 @@ class ConnectionManager:
         self.running_spiders[spider_id].running = False
         self.running_spiders[spider_id].finished = True
         if not self.running_spiders[spider_id].crawler_process is None:
-            server_logger.debug(f"Crawler process now -- {self.running_spiders[spider_id].crawler_process}")
+            print(f"Crawler process now -- {self.running_spiders[spider_id].crawler_process}")
             self.running_spiders[spider_id].crawler_process.cancel()
         del self.running_spiders[spider_id]
-        server_logger.debug(f"Spider wit ID {spider_id} was deleted. Spiders now {self.running_spiders}")
+        print(f"Spider wit ID {spider_id} was deleted. Spiders now {self.running_spiders}")
 
             
 
