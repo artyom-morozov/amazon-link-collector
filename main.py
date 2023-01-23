@@ -16,17 +16,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from websockets.exceptions import ConnectionClosedError
 from collections import defaultdict
 from urllib.parse import urlparse
-from asyncio import sleep
+from asyncio import sleep, create_task
 
 origins = [
     "http://localhost",
     "http://localhost:8080",
     "http://localhost:3000",
     "http://amzlinkcheck.com/",
-    "http://amzlinkcheck.com/*"
+    "http://amzlinkcheck.com/*",
+    "https://amzlinkcheck.com/",
+    "https://amzlinkcheck.com/*",
 ]
 
-
+# Timeout period in seconds
+WEBSOCKET_TIMEOUT = 60
+WEBSOCKET_RETRIES = 3
 
 config = dotenv_values('.env')  # take environment variables from .env.
 
@@ -105,10 +109,10 @@ class ConnectionManager:
         self.running_spiders[spider_id].running = False
         self.running_spiders[spider_id].finished = True
         if not self.running_spiders[spider_id].crawler_process is None:
-            print("Crawler process now --",self.running_spiders[spider_id].crawler_process)
+            server_logger.debug(f"Crawler process now -- {self.running_spiders[spider_id].crawler_process}")
             self.running_spiders[spider_id].crawler_process.cancel()
         del self.running_spiders[spider_id]
-        print(f"Spider wit ID {spider_id} was deleted. Spiders now", self.running_spiders)
+        server_logger.debug(f"Spider wit ID {spider_id} was deleted. Spiders now {self.running_spiders}")
 
             
 
@@ -124,7 +128,7 @@ class ConnectionManager:
         if not self.running_spiders[spider_id].crawler_process is None:
             self.running_spiders[spider_id].crawler_process.cancel()
         del self.running_spiders[spider_id]
-        print(f"Spider wit ID {spider_id} was deleted. Spiders now", self.running_spiders)
+        print(f"Spider wit ID {spider_id} was deleted. Spiders now {self.running_spiders}")
 
     async def disconnect_and_fail(self, spider_id):
         if not spider_id in self.running_spiders:
@@ -139,7 +143,7 @@ class ConnectionManager:
         if not self.running_spiders[spider_id].crawler_process is None:
             self.running_spiders[spider_id].crawler_process.cancel()
         del self.running_spiders[spider_id]
-        print(f"Spider wit ID {spider_id} was deleted. Spiders now", self.running_spiders)
+        print(f"Spider wit ID {spider_id} was deleted. Spiders now {self.running_spiders}")
             
 
     async def send_to_client(self, spider_id: str):
@@ -157,7 +161,7 @@ manager = ConnectionManager()
 
 @app.websocket("/ws/{spider_id}")
 async def websocket_endpoint(websocket: WebSocket, spider_id: str):
-    print("Received connection for spider with id", spider_id)
+    print(f"Received connection for spider with id {spider_id}")
     try:
         await manager.connect(websocket, spider_id)
         
@@ -181,13 +185,13 @@ async def websocket_endpoint(websocket: WebSocket, spider_id: str):
         await manager.disconnect_and_notify(spider_id)
     
     except (WebSocketException, ConnectionClosedError, WebSocketDisconnect) as e:
-        print("Websocket Disconnected Error", e)
-        print("Process", CRAWL_RUNNER.crawlers)
+        print(f"Websocket Disconnected Error {e}")
+        print(f"Process {CRAWL_RUNNER.crawlers}")
         manager.disconnect(spider_id)
         stop_crawler(spider_id)
     
     except Exception as e:
-        print("Unknown Websocket Error", e)
+        print(f"Unknown Websocket Error {e}")
         manager.disconnect(spider_id)
         stop_crawler(spider_id)
 
@@ -207,7 +211,6 @@ def started_scrape(spider):
 def finished_scrape(spider, *args, **kwargs):
     print(f'Spider with id {spider.id} finished crawling')
     if spider.id and spider.id in manager.running_spiders:
-        print("stoping everything")
         manager.running_spiders[spider.id].running = False
         manager.running_spiders[spider.id].finished = True
 
@@ -258,6 +261,19 @@ def crawl_with_crochet(url, spider_id):
 
     return eventual
 
+# Define the async function
+async def check_websocket_connection(new_spider_id):
+    for i in range(WEBSOCKET_RETRIES):
+        retry = i+1
+        if not manager.running_spiders[new_spider_id].websocket is None:
+            break
+        print(f'Websocket is not connected. Retry {retry}/{WEBSOCKET_RETRIES}.')
+        await sleep(10)
+        if manager.running_spiders[new_spider_id].websocket is None and retry == WEBSOCKET_RETRIES:
+            print(f'Websocket was not initiated. Stopping crawling process...')
+            # Stop the crawler and disconnect the spider if no websocket connection is established
+            manager.disconnect(new_spider_id)
+            stop_crawler(new_spider_id)
 
 @app.post("/start_crawl")
 async def start_spider(request: Request, url: str = Form(...)):
@@ -275,4 +291,7 @@ async def start_spider(request: Request, url: str = Form(...)):
     except ValueError as e:
         # return a Bad Request if the link is not valid
         return JSONResponse(content={"Invalid URL provided": str(e)}, status_code=400)
+    # Schedule the async function to be executed in parallel
+    print("Sending to client and starting deferred task...")
+    create_task(check_websocket_connection(new_spider_id))
     return {"spider_id": new_spider_id}
